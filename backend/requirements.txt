@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+SQLAlchemy>=1.4
+asyncpg
+alembic
+pydantic
+python-dotenv
+python-jose[cryptography]
+aioredis
+psycopg2-binary
+databases       # optional helper if you prefer
+pytest
+httpx
