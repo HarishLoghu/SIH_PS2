@@ -8,12 +8,10 @@ app = FastAPI(
     version="1.0"
 )
 
-# ---------------- Root Route ----------------
 @app.get("/")
 def root():
-    return {"message": "Welcome to the Learning Path Generator API 🚀"}
+    return {"message": "Welcome to the Learning Path Generator API"}
 
-# ---------------- Mock ML Endpoints ----------------
 class Features(BaseModel):
     vector: list[float]
 
@@ -38,15 +36,10 @@ def explain(features: Features):
 def health():
     return {"status": "ok", "model_loaded": False}
 
-# ---------------- Udemy External Courses (RapidAPI) ----------------
 RAPIDAPI_KEY = "df33adf040msh36b5b205dbf09e4p188dedjsn2b364664a015"
 
 @app.get("/external-courses/udemy")
 def get_udemy_courses(query: str = "python", page: int = 1, page_size: int = 10):
-    """
-    Fetch free Udemy courses from RapidAPI.
-    Example: /external-courses/udemy?query=python&page=1&page_size=10
-    """
     url = "https://udemy-paid-courses-for-free-api.p.rapidapi.com/rapidapi/courses/search"
     headers = {
         "x-rapidapi-key": RAPIDAPI_KEY,
@@ -63,8 +56,6 @@ def get_udemy_courses(query: str = "python", page: int = 1, page_size: int = 10)
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
 
         data = resp.json()
-
-        # ✅ Clean response
         cleaned = []
         for course in data.get("courses", []):
             cleaned.append({
@@ -87,17 +78,11 @@ def get_udemy_courses(query: str = "python", page: int = 1, page_size: int = 10)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# ---------------- Adzuna Job Search API ----------------
-ADZUNA_APP_ID = "41124aed"   # 👈 your real App ID
-ADZUNA_APP_KEY = "e1f63054c16f5fd19fd5b0532e92d1c6"   # 👈 your real App Key
+ADZUNA_APP_ID = "41124aed"
+ADZUNA_APP_KEY = "e1f63054c16f5fd19fd5b0532e92d1c6"
 
 @app.get("/external-jobs/adzuna")
 def get_adzuna_jobs(query: str = "python developer", country: str = "gb", page: int = 1, results_per_page: int = 10):
-    """
-    Fetch jobs from Adzuna API.
-    Example: /external-jobs/adzuna?query=python&country=gb&page=1&results_per_page=10
-    """
     url = f"http://api.adzuna.com/v1/api/jobs/{country}/search/{page}"
     params = {
         "app_id": ADZUNA_APP_ID,
@@ -125,5 +110,40 @@ def get_adzuna_jobs(query: str = "python developer", country: str = "gb", page: 
             })
 
         return {"total": len(jobs), "jobs": jobs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+INTERNSHIP_API_URL = "https://internships-api.p.rapidapi.com/active-jb-7d"
+INTERNSHIP_HOST = "internships-api.p.rapidapi.com"
+
+@app.get("/external-internships/rapidapi")
+def get_internships():
+    headers = {
+        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-host": INTERNSHIP_HOST
+    }
+
+    try:
+        resp = requests.get(INTERNSHIP_API_URL, headers=headers)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+
+        data = resp.json()
+        internships = []
+        for item in data:
+            internships.append({
+                "title": item.get("title"),
+                "company": item.get("company"),
+                "location": item.get("location"),
+                "posted": item.get("date_posted"),
+                "url": item.get("url"),
+                "description": item.get("description")
+            })
+
+        return {
+            "total": len(internships),
+            "internships": internships
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
