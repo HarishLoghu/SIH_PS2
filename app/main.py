@@ -19,7 +19,6 @@ class Features(BaseModel):
 
 @app.post("/recommend")
 def recommend(features: Features):
-    # Mock prediction for now
     return {
         "recommendation": "Software Engineer",
         "confidence": 0.92,
@@ -28,7 +27,6 @@ def recommend(features: Features):
 
 @app.post("/explain")
 def explain(features: Features):
-    # Mock explanation
     return {
         "explanation": [
             {"feature_index": i, "contribution": round(val * 0.1, 3)}
@@ -63,8 +61,69 @@ def get_udemy_courses(query: str = "python", page: int = 1, page_size: int = 10)
         })
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
-        
-        # 🔹 Debug Mode: return the raw response from RapidAPI
-        return resp.json()
+
+        data = resp.json()
+
+        # ✅ Clean response
+        cleaned = []
+        for course in data.get("courses", []):
+            cleaned.append({
+                "title": course.get("name"),
+                "category": course.get("category"),
+                "image": course.get("image"),
+                "original_price": course.get("actual_price_usd"),
+                "discounted_price": course.get("sale_price_usd"),
+                "offer_expires": course.get("sale_end"),
+                "description": course.get("description"),
+                "url": course.get("url"),
+                "clean_url": course.get("clean_url")
+            })
+
+        return {
+            "total_courses": data.get("total", 0),
+            "results": cleaned
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------- Adzuna Job Search API ----------------
+ADZUNA_APP_ID = "41124aed"   # 👈 your real App ID
+ADZUNA_APP_KEY = "e1f63054c16f5fd19fd5b0532e92d1c6"   # 👈 your real App Key
+
+@app.get("/external-jobs/adzuna")
+def get_adzuna_jobs(query: str = "python developer", country: str = "gb", page: int = 1, results_per_page: int = 10):
+    """
+    Fetch jobs from Adzuna API.
+    Example: /external-jobs/adzuna?query=python&country=gb&page=1&results_per_page=10
+    """
+    url = f"http://api.adzuna.com/v1/api/jobs/{country}/search/{page}"
+    params = {
+        "app_id": ADZUNA_APP_ID,
+        "app_key": ADZUNA_APP_KEY,
+        "results_per_page": results_per_page,
+        "what": query,
+        "content-type": "application/json"
+    }
+
+    try:
+        resp = requests.get(url, params=params)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+
+        data = resp.json()
+        jobs = []
+        for job in data.get("results", []):
+            jobs.append({
+                "title": job.get("title"),
+                "company": job.get("company", {}).get("display_name"),
+                "location": job.get("location", {}).get("display_name"),
+                "posted": job.get("created"),
+                "url": job.get("redirect_url"),
+                "description": job.get("description")
+            })
+
+        return {"total": len(jobs), "jobs": jobs}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
